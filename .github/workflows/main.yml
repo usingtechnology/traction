@@ -31,9 +31,16 @@ jobs:
         with:
           images: ghcr.io/usingtechnology/traction-holder
           tags: |
+            type=ref,event=branch
+            type=ref,event=pr
             type=ref,event=tag
-            type=edge,branch=main
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha
+            type=sha,prefix={{branch}}-
+            type=sha,format=long
+            type=sha,format=long,prefix={{branch}}-
             
       - name: Prepare docker tags for verifier image
         id: verifiertags
@@ -59,6 +66,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./services/holder
+          labels: ${{ steps.holdertags.outputs.labels }}
           push: true
           tags: ${{ steps.holdertags.outputs.tags }}
 
@@ -67,4 +75,4 @@ jobs:
         with:
           context: ./services/verifier
           push: true
-          tags: ${{ steps.holdertags.outputs.tags }}
+          tags: ${{ steps.verifiertags.outputs.tags }}
