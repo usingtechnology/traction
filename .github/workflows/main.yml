@@ -1,0 +1,72 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the develop branch
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Prepare docker tags for holder image
+        id: holdertags
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/usingtechnology/traction-holder
+          tags: |
+            type=ref,event=tag
+            type=edge,branch=main
+            type=sha
+            
+      - name: Prepare docker tags for verifier image
+        id: verifiertags
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/usingtechnology/traction-verifier
+          tags: |
+            type=ref,event=tag
+            type=edge,branch=main
+            type=sha
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner}}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push holder image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./services/holder
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.holdertags.outputs.tags }}
+
+      - name: Build and push verifier image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./services/verifier
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.holdertags.outputs.tags }}
